@@ -1,0 +1,44 @@
+{
+  "display_information": {
+    "name": "alias-x",
+    "description": "Channel-specific group aliases for Slack",
+    "background_color": "#4A154B"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "alias-x",
+      "always_online": false
+    },
+    "slash_commands": [
+      {
+        "command": "/alias-x",
+        "description": "Create and manage channel aliases",
+        "usage_hint": "help",
+        "should_escape": true,
+        "url": "https://YOUR_WORKER_HOST/slack/commands"
+      }
+    ]
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "chat:write",
+        "commands",
+        "channels:read",
+        "groups:read",
+        "channels:history",
+        "groups:history"
+      ]
+    }
+  },
+  "settings": {
+    "socket_mode_enabled": false,
+    "event_subscriptions": {
+      "bot_events": [
+        "message.channels",
+        "message.groups"
+      ],
+      "request_url": "https://YOUR_WORKER_HOST/slack/events"
+    }
+  }
+}

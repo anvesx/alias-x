@@ -1,0 +1,24 @@
+{
+  "name": "alias-x",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "check": "npm run typecheck && npm test",
+    "db:local": "wrangler d1 migrations apply alias-db --local",
+    "deploy": "wrangler deploy",
+    "proxy:local": "node scripts/slack-tunnel-proxy.mjs",
+    "recover:local": "node scripts/local-recovery.mjs",
+    "recover:watch": "node scripts/local-recovery.mjs --watch"
+  },
+  "devDependencies": {
+    "wrangler": "4.147.0",
+    "typescript": "7.0.2",
+    "tsx": "4.23.15",
+    "@cloudflare/workers-types": "latest",
+    "@types/node": "latest"
+  }
+}

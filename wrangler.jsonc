@@ -1,0 +1,23 @@
+{
+  "name": "alias-x",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-10-05",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "alias-db",
+      "database_id": "00000000-0000-0000-0000-000000000001",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "SLACK_TEAM_ID": "",
+    "ALLOWED_CHANNEL_IDS": "",
+    "MAX_ALIASES": "3"
+  },
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  }
+}
