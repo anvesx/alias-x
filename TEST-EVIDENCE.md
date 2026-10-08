@@ -56,3 +56,38 @@ Mention replies now contain only deduplicated current-member handles, without al
 ## Remove departed recipients
 
 Reproduced a failing regression: removing a stored member after they leave the channel was rejected by target membership validation. Removal now permits departed targets, while the actor must still belong to the channel and create/add/set still reject outside targets. npm run check exited 0, 28/28 passed; selfcheck covered two files with zero FAIL/warnings. The user’s exact failing command/error is pending; this fixes the reproduced case and is not proof of their live failure being resolved. Removing the final member still requires deleting the alias. Live Slack retest NOT RUN.
+
+## No count quotas (2026-10-08)
+
+The owner requested no limit on aliases per user or recipients per alias. Removed the application count caps from parsing, mutation validation and atomic insertion; old MAX_ALIASES settings are ignored. Duplicate-name and optimistic concurrency checks remain. Lists/show use continuation commands (100 aliases/200 members per page). Large mention jobs save recipient progress and split replies at whole-handle boundaries below Slack's truncation threshold. Successful chunks reset consecutive failures only, preserving the monotonic attempt fence. Membership pagination has no page-count cap, retaining its time budget and rejecting repeated cursors.
+
+Contract-first evidence: new count/paging regressions failed against the capped implementation; large-delivery tests failed against the single-message implementation; the 105-page membership regression failed with membership_pagination_limit before that guard was replaced.
+
+`npm run check`, exit 0:
+
+```text
+tests 39
+pass 39
+fail 0
+skipped 0
+```
+
+Cases include one owner creating 25 aliases; create/add growing to 800 members, remove/set of those members; 105 aliases across list pages; 20,000 recipients across more than five successful chunks; later 429 preserving cursor and honoring retry-after; skipped leavers; ambiguous later send never resent; stale generation fences after a successful chunk; five interrupted preparations exhausting the separate failure counter; and migration/transaction rollback on a copy of legacy queued/preparing/sending/done rows. Existing aliases and retry budgets survive migration 0004.
+
+The independent verifier used a fresh detached snapshot: npm ci/check and migrations 0001–0004 exited 0, 39/39 tests passed, and the changed-code selfcheck covered 13 files with zero FAIL/warnings. The count/paging/chunk/fencing slice passed review. The separate dependency audit reports three high-severity development-toolchain advisories; dependency changes are outside this slice.
+
+Final selfcheck including the runtime driver: exit 0, 14 files, zero FAIL/warnings. The independent verifier also reproduced the corrected runtime journey in its clean snapshot with exit 0. Its isolation review confirmed the generated sweep trigger exists only in the temporary wrapper, and that SQL splitting supports the current plain-statement migrations rather than arbitrary SQL.
+
+`npm run test:runtime`, exit 0, actual workerd and local D1:
+
+```text
+PASS: signed commands create 26 aliases from one owner; 800-member alias and show/list verified; legacy MAX_ALIASES=3 ignored.
+PASS: actual workerd/D1 delivered 20,000 synthetic handles in 9 chunks; cold restart, sweep continuation, dedup and HMAC error path verified.
+NOT RUN: live Slack rendering, recipient notifications or production deployment.
+```
+
+This journey applies all migrations to a temporary database and submits signed HTTP commands through the actual Worker. It checks response bodies, stored counts and explicit failure paths. Its 20,000-recipient fixture is seeded directly in D1; the Slack membership stub returns 101 pages. A cold Worker restart preserves the next-recipient cursor and aliases; HTTP-triggered scheduled sweeps complete all nine chunks, each at most 39,000 characters, with exactly one handle per recipient. Sweeps force due times in the temporary database; this proves the scheduled handler and durable continuation, not natural cron timing. The Slack transport is mocked throughout and no real person is notified.
+
+Runtime harness failures were corrected before accepting evidence: refreshed the missing native dependency with npm ci; used the installed Miniflare options adapter and inline bundled script; applied complete multiline SQL statements through D1 batch instead of line-oriented D1 exec. No bot-source workaround was introduced for those harness issues.
+
+The owner's already running Slack deployment was observed separately with the old three-alias cap and old reply text. This new revision is not a claim that deployment has been updated. Operators must apply migration 0004 before starting the new Worker. Physical Slack/hosting storage, payload and rate limits remain; they are not alias-count or member-count quotas.

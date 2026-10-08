@@ -20,10 +20,10 @@ test('full command lifecycle, membership changes, creation metadata and deletion
  assert.equal(f.sql.prepare('SELECT count(*) AS n FROM audit').get()!.n,5);
  }finally{f.sql.close();}
 });
-test('workspace and channel isolation with same alias',async()=>{const f=fixture(10);try{
+test('workspace and channel isolation with same alias',async()=>{const f=fixture();try{
  await f.service.command('T1','C1','U123','create devs <@U123>');await f.service.command('T1','C2','U123','create devs <@U456>');await f.service.command('T2','C1','U123','create devs <@U789>');
- await f.service.mention('T1','C2','!devs','1.2');assert.match(f.posts.at(-1)!.text,/<@U456>/);assert.ok(!f.posts.at(-1)!.text.includes('<@U123>'));
- await f.service.mention('T2','C1','!devs','1.3');assert.match(f.posts.at(-1)!.text,/<@U789>/);
+ await f.mention('T1','C2','!devs','1.2');assert.match(f.posts.at(-1)!.text,/<@U456>/);assert.ok(!f.posts.at(-1)!.text.includes('<@U123>'));
+ await f.mention('T2','C1','!devs','1.3');assert.match(f.posts.at(-1)!.text,/<@U789>/);
 }finally{f.sql.close();}});
 test('reject duplicate, nonmembers, empty membership and unknown aliases',async()=>{const f=fixture();try{
  await assert.rejects(()=>f.service.command('T1','C1','U999','help'),/must be a member/);
@@ -42,19 +42,41 @@ test('remove accepts stored members who left the channel while additions remain 
  await assert.rejects(()=>f.service.command('T1','C1','U123','set devs <@U456>'),/Every target/);
  await assert.rejects(()=>f.service.command('T1','C1','U999','remove devs <@U123>'),/must be a member/);
 }finally{f.sql.close();}});
-test('atomic create cap and optimistic concurrent update protection',async()=>{const f=fixture();try{
- const results=await Promise.allSettled(['a','b','c','d'].map(n=>f.store.create('T1','C1',n,['U123'],'U123',1,3)));
- assert.equal(results.filter(r=>r.status==='fulfilled').length,3);
+test('unlimited distinct creates retain duplicate and optimistic concurrent update protection',async()=>{const f=fixture();try{
+ const results=await Promise.allSettled(['a','b','c','d'].map(n=>f.store.create('T1','C1',n,['U123'],'U123',1)));
+ assert.equal(results.filter(r=>r.status==='fulfilled').length,4);
+ const duplicates=await Promise.allSettled([1,2].map(()=>f.store.create('T1','C1','same',['U123'],'U123',1)));
+ assert.equal(duplicates.filter(r=>r.status==='fulfilled').length,1);
  const row=(await f.store.get('T1','C1','a'))!;
  await f.store.update(row,['U456'],2);await assert.rejects(()=>f.store.update(row,['U789'],3),/concurrently/);
 }finally{f.sql.close();}});
+test('one owner can create many aliases and grow a membership beyond 100',async()=>{const f=fixture();try{
+ const members=Array.from({length:800},(_,i)=>'U'+String(i).padStart(5,'0'));f.setMembers(['U123',...members]);
+ for(let i=0;i<25;i++) await f.service.command('T1','C1','U123',`create group${i} <@U123>`);
+ const mentions=(users:string[])=>users.map(u=>`<@${u}>`).join(' ');
+ await f.service.command('T1','C1','U123','create large '+mentions(members.slice(0,400)));
+ await f.service.command('T1','C1','U123','add large '+mentions(members.slice(400)));
+ assert.equal(JSON.parse((await f.store.get('T1','C1','large'))!.members).length,800);
+ await f.service.command('T1','C1','U123','remove large '+mentions(members.slice(0,400)));
+ assert.deepEqual(JSON.parse((await f.store.get('T1','C1','large'))!.members),members.slice(400));
+ await f.service.command('T1','C1','U123','set large '+mentions(members));
+ assert.deepEqual(JSON.parse((await f.store.get('T1','C1','large'))!.members),members);
+ const show=await f.service.command('T1','C1','U123','show large');assert.match(show,/Next: \/alias-x show !large 2/);assert.ok(!show.includes(`<@${members[200]}>`));
+ assert.match(await f.service.command('T1','C1','U123','show large 4'),new RegExp(`<@${members[799]}>`));
+ await assert.rejects(()=>f.service.command('T1','C1','U123','show large 5'),/Page/);
+}finally{f.sql.close();}});
+test('list pages every alias without truncating or repeating entries',async()=>{const f=fixture();try{
+ for(let i=0;i<105;i++) await f.store.create('T1','C1','g'+String(i).padStart(3,'0'),['U123'],'U123',1);
+ const first=await f.service.command('T1','C1','U123','list');assert.match(first,/Next: \/alias-x list !g099/);assert.ok(!first.includes('*!g100*'));
+ const last=await f.service.command('T1','C1','U123','list !g099');assert.match(last,/\*!g104\*/);assert.ok(!last.includes('*!g099*'));assert.ok(!last.includes('Next:'));
+}finally{f.sql.close();}});
 test('alias replies deduplicate overlapping members and remove channel leavers',async()=>{const f=fixture();try{
  await f.service.command('T1','C1','U123','create devs <@U123> <@U456>');await f.service.command('T1','C1','U123','create ops <@U123> <@U789>');f.setMembers(['U123','U789']);
- await f.service.mention('T1','C1','!devs !ops !devs','1.2');const last=f.posts.at(-1)!;
+ await f.mention('T1','C1','!devs !ops !devs','1.2');const last=f.posts.at(-1)!;
  assert.equal(last.text,'<@U123> <@U789>');
  assert.equal(last.thread,'1.2');assert.equal((last.text.match(/<@U123>/g)??[]).length,1);assert.ok(!last.text.includes('U456'));assert.match(last.text,/<@U789>/);
- const count=f.posts.length;await f.service.mention('T1','C1','!unknown `!devs`','1.3');assert.equal(f.posts.length,count);
- f.setMembers([]);await f.service.mention('T1','C1','!devs !ops','1.4');assert.equal(f.posts.length,count);
+ const count=f.posts.length;await f.mention('T1','C1','!unknown `!devs`','1.3');assert.equal(f.posts.length,count);
+ f.setMembers([]);await f.mention('T1','C1','!devs !ops','1.4');assert.equal(f.posts.length,count);
 }finally{f.sql.close();}});
 test('event claims suppress concurrent retries, with explicit failure state',async()=>{const f=fixture();try{
  const claims=await Promise.all([f.store.claim('T1','E1','C1',1),f.store.claim('T1','E1','C1',1)]);assert.equal(claims.filter(Boolean).length,1);
@@ -72,6 +94,14 @@ test('Slack client paginates members and fails closed on errors or malformed res
  await assert.rejects(()=>new Slack('test',async()=>Response.json({ok:false,error:'missing_scope'})).members('C1'),SlackError);
  await assert.rejects(()=>new Slack('test',async()=>Response.json({ok:true,members:'wrong'})).members('C1'),/invalid_members/);
  await assert.rejects(()=>new Slack('test',async()=>new Response('',{status:429})).members('C1'),/http_429/);
+});
+test('Slack membership has no page-count cap and detects repeated cursors',async()=>{
+ let calls=0;
+ const io:typeof fetch=async()=>{calls++;return Response.json({ok:true,members:['U'+calls],response_metadata:{next_cursor:calls<105?'page'+calls:''}});};
+ const members=await new Slack('test',io).members('C1');assert.equal(calls,105);assert.equal(members.size,105);assert.ok(members.has('U105'));
+ let repeats=0;
+ await assert.rejects(()=>new Slack('test',async()=>{repeats++;return Response.json({ok:true,members:['U123'],response_metadata:{next_cursor:'same'}});}).members('C1'),/membership_pagination_cycle/);
+ assert.equal(repeats,2);
 });
 
 test('Slack membership uses GET query and posting uses JSON with unbound fetch',async()=>{

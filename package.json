@@ -7,6 +7,7 @@
     "dev": "wrangler dev",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
+    "test:runtime": "node test/runtime-journey.mjs",
     "check": "npm run typecheck && npm test",
     "db:local": "wrangler d1 migrations apply alias-db --local",
     "deploy": "wrangler deploy",

@@ -14,16 +14,20 @@ export class Slack implements SlackPort {
  }
  async members(channel:string):Promise<Set<string>> {
  const budget=AbortSignal.timeout(this.membershipBudgetMs);
- const members=new Set<string>();let cursor='';
- for(let page=0;page<100;page++) {
+ const members=new Set<string>(),seen=new Set<string>();let cursor='';
+ while(true) {
+ budget.throwIfAborted();
  const data=await this.call('conversations.members',{channel,limit:200,...(cursor?{cursor}:{})},budget);
  if(!Array.isArray(data.members)||data.members.some(v=>typeof v!=='string')) throw new SlackError('invalid_members');
  for(const member of data.members) members.add(member as string);
  const metadata=data.response_metadata;
- cursor=metadata&&typeof metadata==='object'&&'next_cursor'in metadata?String(metadata.next_cursor??''):'';
+ const next=metadata&&typeof metadata==='object'&&'next_cursor'in metadata?metadata.next_cursor:'';
+ if(next!==null&&next!==undefined&&typeof next!=='string')throw new SlackError('invalid_members_cursor');
+ cursor=next??'';
  if(!cursor) return members;
+ if(seen.has(cursor))throw new SlackError('membership_pagination_cycle');
+ seen.add(cursor);
  }
- throw new SlackError('membership_pagination_limit');
  }
  async post(channel:string,text:string,thread?:string):Promise<void> {
  await this.call('chat.postMessage',{channel,text,...(thread?{thread_ts:thread}:{}),unfurl_links:false,unfurl_media:false});

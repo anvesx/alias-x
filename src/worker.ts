@@ -3,7 +3,7 @@ import {DeliveryRunner} from './delivery.ts';
 import {Slack,SlackError} from './slack.ts';
 import {Store} from './store.ts';
 import {Service} from './service.ts';
-export interface Env {DB:D1Database;SLACK_BOT_TOKEN:string;SLACK_SIGNING_SECRET:string;SLACK_TEAM_ID:string;ALLOWED_CHANNEL_IDS:string;MAX_ALIASES:string}
+export interface Env {DB:D1Database;SLACK_BOT_TOKEN:string;SLACK_SIGNING_SECRET:string;SLACK_TEAM_ID:string;ALLOWED_CHANNEL_IDS:string}
 export async function verifySignature(body:string,headers:Headers,secret:string,nowSeconds:number):Promise<boolean> {
  const ts=headers.get('x-slack-request-timestamp')??'';
  const sig=headers.get('x-slack-signature')??'';
@@ -32,7 +32,7 @@ export function createWorker(io:typeof fetch=fetch,clock:()=>number=Date.now) {r
  const body=new TextDecoder().decode(Uint8Array.from(chunks.flatMap(c=>Array.from(c))));
  const now=clock(); // Boundary clock: pure service and verification receive the time explicitly.
  if(!await verifySignature(body,req.headers,env.SLACK_SIGNING_SECRET,Math.floor(now/1000))) return response('Invalid signature',401);
- const store=new Store(env.DB);const slack=new Slack(env.SLACK_BOT_TOKEN,io);const service=new Service(store,slack,()=>now,Number(env.MAX_ALIASES)||3);
+ const store=new Store(env.DB);const slack=new Slack(env.SLACK_BOT_TOKEN,io);const service=new Service(store,slack,()=>now);
  try {
  if(path==='/slack/commands') {
  const form=new URLSearchParams(body);const team=form.get('team_id')??'';const channel=form.get('channel_id')??'';const user=form.get('user_id')??'';
@@ -71,7 +71,7 @@ export function createWorker(io:typeof fetch=fetch,clock:()=>number=Date.now) {r
  },
  async scheduled(_controller:ScheduledController,env:Env,_ctx:ExecutionContext):Promise<void> {
  if(!env.SLACK_BOT_TOKEN) throw new Error('App credentials missing');
- const store=new Store(env.DB);const slack=new Slack(env.SLACK_BOT_TOKEN,io);const service=new Service(store,slack,clock,Number(env.MAX_ALIASES)||3);
+ const store=new Store(env.DB);const slack=new Slack(env.SLACK_BOT_TOKEN,io);const service=new Service(store,slack,clock);
  await store.maintain(env.SLACK_TEAM_ID,clock());
  const runner=new DeliveryRunner(store,service,slack,clock);
  for(const job of await store.dueDeliveries(env.SLACK_TEAM_ID,clock())) {
