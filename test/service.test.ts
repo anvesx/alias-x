@@ -33,6 +33,15 @@ test('reject duplicate, nonmembers, empty membership and unknown aliases',async(
  await assert.rejects(()=>f.service.command('T1','C1','U123','remove devs <@U123>'),/must contain/);
  await assert.rejects(()=>f.service.command('T1','C1','U123','delete unknown'),/does not exist/);
 }finally{f.sql.close();}});
+test('remove accepts stored members who left the channel while additions remain restricted',async()=>{const f=fixture();try{
+ await f.service.command('T1','C1','U123','create devs <@U123> <@U456>');
+ f.setMembers(['U123']);
+ assert.equal(await f.service.command('T1','C1','U123','remove devs <@U456>'),'Updated !devs: 1 members.');
+ assert.deepEqual(JSON.parse((await f.store.get('T1','C1','devs'))!.members),['U123']);
+ await assert.rejects(()=>f.service.command('T1','C1','U123','add devs <@U456>'),/Every target/);
+ await assert.rejects(()=>f.service.command('T1','C1','U123','set devs <@U456>'),/Every target/);
+ await assert.rejects(()=>f.service.command('T1','C1','U999','remove devs <@U123>'),/must be a member/);
+}finally{f.sql.close();}});
 test('atomic create cap and optimistic concurrent update protection',async()=>{const f=fixture();try{
  const results=await Promise.allSettled(['a','b','c','d'].map(n=>f.store.create('T1','C1',n,['U123'],'U123',1,3)));
  assert.equal(results.filter(r=>r.status==='fulfilled').length,3);

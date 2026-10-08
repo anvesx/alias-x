@@ -13,7 +13,8 @@ export class Service {
  return rows.length?rows.map(row=>`*!${row.name}* — ${JSON.parse(row.members).length} members`).join('\n'):'No aliases in this channel. Use /alias-x create.';
  }
  const name=cmd.name!;
- if(cmd.members?.some(u=>!current.has(u))) throw new InputError('Every target must be a current member of this channel.');
+ // Removing a stored recipient must remain possible after they leave the channel.
+ if(cmd.action!=='remove'&&cmd.members?.some(u=>!current.has(u))) throw new InputError('Every target must be a current member of this channel.');
  if(cmd.action==='create') {
  await this.store.create(team,channel,name,cmd.members!,user,this.now(),this.max);
  // Creation record is visible without @mentioning recipients and unexpectedly notifying them.

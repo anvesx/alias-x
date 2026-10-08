@@ -52,3 +52,7 @@ Final independent budget review used a fresh detached snapshot at /tmp/alias-fin
 ## Owner-requested reply customization (2026-10-08)
 
 Mention replies now contain only deduplicated current-member handles, without alias labels or notification-preference text. The same preference sentence was removed from help/show. Exact-output regression covers overlapping aliases and channel leavers; no reply is emitted when no recipients remain. npm run check exited 0 (27/27); changed-code selfcheck covered three files, zero FAIL/warnings. Local health connection was refused during this change, so the new rendering has NOT been retested in live Slack. Earlier Slack screenshots reflect the previous reply format.
+
+## Remove departed recipients
+
+Reproduced a failing regression: removing a stored member after they leave the channel was rejected by target membership validation. Removal now permits departed targets, while the actor must still belong to the channel and create/add/set still reject outside targets. npm run check exited 0, 28/28 passed; selfcheck covered two files with zero FAIL/warnings. The user’s exact failing command/error is pending; this fixes the reproduced case and is not proof of their live failure being resolved. Removing the final member still requires deleting the alias. Live Slack retest NOT RUN.
