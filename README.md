@@ -22,7 +22,7 @@ Run `npm run check` for strict typecheck and tests. Run the L8 selfcheck over so
 
 ## Commands (provisional pending original-app comparison)
 
-`/alias-x help`, `list`, `show !NAME`, `create !NAME @members`, `set !NAME @members`, `add !NAME @members`, `remove !NAME @members`, `delete !NAME`. Mention `!NAME` in a normal message to post explicit recipients in its thread. Code, links, bot messages and edits are ignored.
+`/alias-x help`, `list`, `show !NAME`, `create !NAME @members`, `set !NAME @members`, `add !NAME @members`, `remove !NAME @members`, `delete !NAME`. Mention `!NAME` in a normal message to post only deduplicated member handles in its thread. No alias label or notification-preference footer is included; if no current recipients remain, no reply is posted. Code, links, bot messages and edits are ignored.
 
 The original's official support page confirms `/alias` and interactive Edit/Delete buttons. That UI and the advertised notification controls still require direct comparison; the current CLI alone is not exact parity.
 

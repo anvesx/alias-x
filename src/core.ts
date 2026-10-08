@@ -24,5 +24,5 @@ export function extractAliases(text:string):string[] {
  const plain=text.replace(/```[\s\S]*?(?:```|$)|`[^`]*(?:`|$)|<[^>]*>|https?:\/\/\S+/g,' ');
  return [...new Set([...plain.matchAll(/(?:^|[^\p{L}\p{N}_!])!([a-z0-9][a-z0-9_-]{0,63})(?![\p{L}\p{N}_-])/giu)].map(m=>m[1]!.toLowerCase()))];
 }
-export const HELP='*alias-x* — channel-specific group mentions\n/alias-x create !devs @members\n/alias-x set !devs @members\n/alias-x add !devs @members\n/alias-x remove !devs @members\n/alias-x show !devs\n/alias-x list\n/alias-x delete !devs\nUse !devs in a message to mention current members in its thread. Members must belong to this channel. Notifications respect Slack preferences.';
+export const HELP='*alias-x* — channel-specific group mentions\n/alias-x create !devs @members\n/alias-x set !devs @members\n/alias-x add !devs @members\n/alias-x remove !devs @members\n/alias-x show !devs\n/alias-x list\n/alias-x delete !devs\nUse !devs in a message to mention current members in its thread. Members must belong to this channel.';
 export function escapeSlack(s:string):string {return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}

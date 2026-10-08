@@ -48,3 +48,7 @@ Automated cases include known 503 preparation failure then recovery, known 429 r
 Local recovery watcher started with npm run recover:watch; scheduled local invocations are unavailable through the public filtering proxy.
 
 Final independent budget review used a fresh detached snapshot at /tmp/alias-final.B95TrY/clean. npm ci and npm run check exited 0; 27/27 tests passed. Repeated typecheck/test and the 13-file selfcheck exited 0 with zero FAILs and zero warnings. All three migrations applied. A separate actual Worker returned alias-x ready from health and 503 for an event request without credentials; that verification process was stopped. Review confirmed the shared 20-second membership budget, per-request eight-second timeout and stale-attempt fence. The reviewer did not independently reproduce the real Slack journeys. Exact original interactive UI, permissions and notification controls remain unverified.
+
+## Owner-requested reply customization (2026-10-08)
+
+Mention replies now contain only deduplicated current-member handles, without alias labels or notification-preference text. The same preference sentence was removed from help/show. Exact-output regression covers overlapping aliases and channel leavers; no reply is emitted when no recipients remain. npm run check exited 0 (27/27); changed-code selfcheck covered three files, zero FAIL/warnings. Local health connection was refused during this change, so the new rendering has NOT been retested in live Slack. Earlier Slack screenshots reflect the previous reply format.

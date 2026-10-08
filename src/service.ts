@@ -23,7 +23,7 @@ export class Service {
  }
  const row=await this.store.get(team,channel,name);
  if(!row) throw new InputError('Alias does not exist in this channel.');
- if(cmd.action==='show') return `*!${name}*\nMembers: ${JSON.parse(row.members).map((u:string)=>`<@${u}>`).join(' ')}\nCreated: ${new Date(row.created_at).toISOString()}\nNotifications respect Slack preferences.`;
+ if(cmd.action==='show') return `*!${name}*\nMembers: ${JSON.parse(row.members).map((u:string)=>`<@${u}>`).join(' ')}\nCreated: ${new Date(row.created_at).toISOString()}`;
  if(cmd.action==='delete') {await this.store.remove(row,user,this.now());return `Deleted !${name}.`;}
  const previous=JSON.parse(row.members) as string[];
  const members=cmd.action==='set'?cmd.members!:cmd.action==='add'?[...new Set([...previous,...cmd.members!])]:previous.filter(u=>!cmd.members!.includes(u));
@@ -38,12 +38,12 @@ export class Service {
  const known=[...new Set(names)].flatMap(name=>{const row=byName.get(name);return row?[row]:[];});
  if(!known.length) return null;
  const current=await this.slack.members(channel);const already=new Set<string>();
- const lines=known.map(row=>{
- const members=(JSON.parse(row.members) as string[]).filter(u=>current.has(u)&&!already.has(u));
- members.forEach(u=>already.add(u));
- return `*!${row.name}*: ${members.length?members.map(u=>`<@${u}>`).join(' '):'No additional current channel members to notify.'}`;
- });
- return `${lines.join('\n')}\nNotifications respect Slack preferences.`;
+ for(const row of known) {
+ for(const member of JSON.parse(row.members) as string[]) {
+ if(current.has(member)) already.add(member);
+ }
+ }
+ return already.size?[...already].map(u=>`<@${u}>`).join(' '):null;
  }
  async mention(team:string,channel:string,text:string,thread:string):Promise<void> {
  const reply=await this.prepareMention(team,channel,extractAliases(text));

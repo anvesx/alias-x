@@ -42,8 +42,10 @@ test('atomic create cap and optimistic concurrent update protection',async()=>{c
 test('alias replies deduplicate overlapping members and remove channel leavers',async()=>{const f=fixture();try{
  await f.service.command('T1','C1','U123','create devs <@U123> <@U456>');await f.service.command('T1','C1','U123','create ops <@U123> <@U789>');f.setMembers(['U123','U789']);
  await f.service.mention('T1','C1','!devs !ops !devs','1.2');const last=f.posts.at(-1)!;
+ assert.equal(last.text,'<@U123> <@U789>');
  assert.equal(last.thread,'1.2');assert.equal((last.text.match(/<@U123>/g)??[]).length,1);assert.ok(!last.text.includes('U456'));assert.match(last.text,/<@U789>/);
  const count=f.posts.length;await f.service.mention('T1','C1','!unknown `!devs`','1.3');assert.equal(f.posts.length,count);
+ f.setMembers([]);await f.service.mention('T1','C1','!devs !ops','1.4');assert.equal(f.posts.length,count);
 }finally{f.sql.close();}});
 test('event claims suppress concurrent retries, with explicit failure state',async()=>{const f=fixture();try{
  const claims=await Promise.all([f.store.claim('T1','E1','C1',1),f.store.claim('T1','E1','C1',1)]);assert.equal(claims.filter(Boolean).length,1);
