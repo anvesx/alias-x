@@ -20,6 +20,18 @@ The proxy exposes only `/slack/events`, `/slack/commands`, `/health`. Never expo
 
 Run `npm run check` for strict typecheck and tests. Run `npm run test:runtime` for the actual local workerd/D1 journey with mocked Slack transport; it uses a temporary database and synthetic IDs, without reading local credentials or notifying humans. Run the L8 selfcheck over source, tests and scripts. These checks do not prove the rendered Slack UI: see [TEST-EVIDENCE.md](TEST-EVIDENCE.md).
 
+## Running on a server (Node + SQLite)
+
+Besides the Cloudflare Worker, the same code runs as a plain Node server with a local SQLite file, for example on a Compute Engine VM behind Caddy. `src/store.ts` and `src/worker.ts` are unchanged; `src/sqlite-d1.ts` adapts `node:sqlite` to the D1 calls, and `src/server.ts` turns `ctx.waitUntil` into tracked promises and the one-minute cron into a timer.
+
+1. Needs Node 22.5 or newer. Run `npm ci --omit=dev`.
+2. Copy `.env.example` to `.env`, fill it in, and `chmod 600 .env`. Never commit it.
+3. Start with `npm start`. Migrations in `migrations/` are applied automatically, once each, and remembered in the SQLite file.
+4. The server listens on `127.0.0.1:8787` (`HOST`/`PORT`). Put a reverse proxy with HTTPS in front and point both Slack Request URLs at `https://<your-domain>/slack/events` and `/slack/commands`. `/health` reports readiness.
+5. `SIGTERM` stops accepting requests, waits up to 10 seconds for background work, then closes the database.
+
+Back up the database with `sqlite3 <db> ".backup <file>"`, not a plain file copy, because the file runs in WAL mode.
+
 ## Commands (provisional pending original-app comparison)
 
 `/alias-x help`, `list [!AFTER_ALIAS]`, `show !NAME [PAGE]`, `create !NAME @members`, `set !NAME @members`, `add !NAME @members`, `remove !NAME @members`, `delete !NAME`. Mention `!NAME` in a normal message to post only deduplicated member handles in its thread. Slack delivers native notifications according to each recipient's Slack preferences. No alias label or notification-preference footer is included; if no current recipients remain, no reply is posted. Code, links, bot messages and edits are ignored.
