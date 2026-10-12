@@ -13,7 +13,7 @@ export async function verifySignature(body:string,headers:Headers,secret:string,
  return crypto.subtle.verify('HMAC',key,bytes,new TextEncoder().encode(`v0:${ts}:${body}`));
 }
 function record(v:unknown):v is Record<string,unknown> {return v!==null&&typeof v==='object'&&!Array.isArray(v);}
-function allowed(env:Env,team:string,channel:string):boolean {return team===env.SLACK_TEAM_ID&&env.ALLOWED_CHANNEL_IDS.split(',').map(s=>s.trim()).includes(channel);}
+function allowed(env:Env,team:string,channel:string):boolean {if(team!==env.SLACK_TEAM_ID) return false;const ids=env.ALLOWED_CHANNEL_IDS.split(',').map(s=>s.trim());return ids.includes('*')||ids.includes(channel);}
 function response(text:string,status=200):Response {return Response.json({response_type:'ephemeral',text},{status});}
 function errorText(error:unknown):string {
  if(error instanceof InputError) return error.message;
