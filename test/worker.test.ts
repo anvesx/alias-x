@@ -39,3 +39,8 @@ test('scheduled sweep recovers persisted jobs and fails closed for removed allow
  const controller={cron:'* * * * *',scheduledTime:now,noRetry(){}} as ScheduledController;
  await f.worker.scheduled!(controller,f.env,f.ctx);assert.equal(f.posts.length,1);assert.equal((await f.store.getDelivery('T1','E3'))!.status,'done');assert.equal((await f.store.getDelivery('T1','E4'))!.status,'failed');
 }finally{await Promise.allSettled(f.jobs);f.sql.close();}});
+test('wildcard allowlist accepts any channel in the configured workspace only',async()=>{const f=setup();try{
+ const env:Env={...f.env,ALLOWED_CHANNEL_IDS:'*'};
+ assert.equal((await f.worker.fetch!(signed(command('help',{channel_id:'C2'})),env,f.ctx)).status,200);
+ assert.equal((await f.worker.fetch!(signed(command('help',{team_id:'T2'})),env,f.ctx)).status,403);
+}finally{await Promise.allSettled(f.jobs);f.sql.close();}});

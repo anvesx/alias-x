@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "start": "tsx src/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
     "test:runtime": "node test/runtime-journey.mjs",
@@ -15,10 +16,12 @@
     "recover:local": "node scripts/local-recovery.mjs",
     "recover:watch": "node scripts/local-recovery.mjs --watch"
   },
+  "dependencies": {
+    "tsx": "4.23.15"
+  },
   "devDependencies": {
     "wrangler": "4.147.0",
     "typescript": "7.0.2",
-    "tsx": "4.23.15",
     "@cloudflare/workers-types": "latest",
     "@types/node": "latest"
   }
