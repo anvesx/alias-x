@@ -50,6 +50,7 @@ mv "$APP" "$PREV"
 mv "$NEW" "$APP"
 
 echo "4/5 starting"
+systemctl reset-failed alias-x 2>/dev/null || true
 systemctl start alias-x
 
 echo "5/5 health check"
@@ -66,5 +67,7 @@ systemctl stop alias-x || true
 rm -rf "$FAILED"
 mv "$APP" "$FAILED"
 mv "$PREV" "$APP"
+# A crash-looping version can trip systemd's restart limit; clear it so the old version can start.
+systemctl reset-failed alias-x 2>/dev/null || true
 systemctl start alias-x
 exit 1
